@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DC GAN MNIST Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #e94560, #0f3460);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            color: #a0a0a0;
+            font-size: 1.1em;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .status-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .status-item span {
+            color: #e94560;
+            font-weight: bold;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .controls {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .controls h2 {
+            margin-bottom: 20px;
+            color: #e94560;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ccc;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #e94560;
+            cursor: pointer;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, #e94560, #0f3460);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(233, 69, 96, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .display-area {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .display-area h2 {
+            margin-bottom: 20px;
+            color: #e94560;
+        }
+        
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            min-height: 300px;
+        }
+        
+        .image-card {
+            aspect-ratio: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .image-card:hover {
+            transform: scale(1.05);
+            border-color: #e94560;
+        }
+        
+        .image-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 10px;
+        }
+        
+        .placeholder {
+            color: #666;
+            text-align: center;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #e94560;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .info-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-section h2 {
+            margin-bottom: 15px;
+            color: #e94560;
+        }
+        
+        .info-section p {
+            color: #ccc;
+            line-height: 1.6;
+        }
+        
+        .api-endpoints {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .api-endpoints h3 {
+            color: #e94560;
+            margin-bottom: 10px;
+        }
+        
+        .api-endpoints code {
+            display: block;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            overflow-x: auto;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #666;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DC GAN MNIST Generator</h1>
+            <p class="subtitle">Generate synthetic handwritten digit images using Deep Convolutional GAN</p>
+        </header>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                Status: <span id="modelStatus">Loading...</span>
+            </div>
+            <div class="status-item">
+                Device: <span id="deviceInfo">-</span>
+            </div>
+            <div class="status-item">
+                Latent Dim: <span id="latentDim">-</span>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="controls">
+                <h2>Generation Controls</h2>
+                
+                <div class="control-group">
+                    <label for="numImages">Number of Images: <span id="numImagesValue">8</span></label>
+                    <input type="range" id="numImages" min="1" max="16" value="8" onchange="updateNumImages()">
+                </div>
+                
+                <button class="btn btn-primary" onclick="generateImages()" id="generateBtn">
+                    Generate Images
+                </button>
+                
+                <button class="btn btn-secondary" onclick="generateSingle()">
+                    Generate Single Image
+                </button>
+            </div>
+            
+            <div class="display-area">
+                <h2>Generated Images</h2>
+                
+                <div class="images-grid" id="imagesGrid">
+                    <div class="placeholder" id="placeholder">
+                        <p>Click "Generate Images" to create synthetic MNIST digits</p>
+                    </div>
+                </div>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Generating images...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h2>About This Application</h2>
+            <p>
+                This application uses a Deep Convolutional Generative Adversarial Network (DC GAN)
+                trained on the MNIST dataset to generate synthetic handwritten digit images.
+                The generator network takes random noise vectors as input and produces
+                28x28 grayscale images that resemble handwritten digits (0-9).
+            </p>
+            
+            <div class="api-endpoints">
+                <h3>API Endpoints</h3>
+                <code>POST /api/generate - Generate multiple images (body: {"num_images": N})</code>
+                <code>POST /api/generate-single - Generate a single image</code>
+                <code>GET /api/status - Check model status</code>
+                <code>GET /api/health - Health check</code>
+            </div>
+        </div>
+        
+        <footer>
+            <p>DC GAN MNIST Generator - Built with PyTorch & Flask</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Update number display
+        function updateNumImages() {
+            document.getElementById('numImagesValue').textContent = document.getElementById('numImages').value;
+        }
+        
+        // Check model status on load
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                document.getElementById('modelStatus').textContent = data.status === 'ready' ? 'Ready' : 'Not Loaded';
+                document.getElementById('modelStatus').style.color = data.status === 'ready' ? '#4caf50' : '#e94560';
+                document.getElementById('deviceInfo').textContent = data.device || '-';
+                document.getElementById('latentDim').textContent = data.latent_dim || '-';
+            } catch (error) {
+                document.getElementById('modelStatus').textContent = 'Error';
+                document.getElementById('modelStatus').style.color = '#e94560';
+            }
+        }
+        
+        // Generate images
+        async function generateImages() {
+            const numImages = document.getElementById('numImages').value;
+            const loading = document.getElementById('loading');
+            const grid = document.getElementById('imagesGrid');
+            const placeholder = document.getElementById('placeholder');
+            const btn = document.getElementById('generateBtn');
+            
+            loading.classList.add('active');
+            grid.innerHTML = '';
+            placeholder.style.display = 'none';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ num_images: parseInt(numImages) })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    grid.innerHTML = data.images.map(img => `
+                        <div class="image-card">
+                            <img src="${img}" alt="Generated MNIST Digit">
+                        </div>
+                    `).join('');
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                grid.innerHTML = `<div class="placeholder"><p style="color: #e94560;">Error: ${error.message}</p></div>`;
+                placeholder.style.display = 'block';
+            } finally {
+                loading.classList.remove('active');
+                btn.disabled = false;
+            }
+        }
+        
+        // Generate single image
+        async function generateSingle() {
+            const loading = document.getElementById('loading');
+            const grid = document.getElementById('imagesGrid');
+            const placeholder = document.getElementById('placeholder');
+            
+            loading.classList.add('active');
+            grid.innerHTML = '';
+            placeholder.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/generate-single', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    grid.innerHTML = `
+                        <div class="image-card" style="grid-column: span 4;">
+                            <img src="${data.image}" alt="Generated MNIST Digit" style="max-width: 200px;">
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                grid.innerHTML = `<div class="placeholder"><p style="color: #e94560;">Error: ${error.message}</p></div>`;
+                placeholder.style.display = 'block';
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+        
+        // Initialize
+        checkStatus();
+    </script>
+</body>
+</html>
