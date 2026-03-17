@@ -1,125 +1,115 @@
-# DC GAN MNIST Generator
+# DC-GAN MNIST Generator
 
-A complete Deep Convolutional Generative Adversarial Network (DC GAN) implementation for generating synthetic handwritten digit images using the MNIST dataset.
+A complete **Deep Convolutional Generative Adversarial Network** implementation in PyTorch that generates synthetic handwritten digit images, served via a Flask REST API with a web interface for real-time image generation.
 
-## Project Structure
+---
 
+## Highlights
+
+- Implemented a **DCGAN architecture from scratch** in PyTorch — Generator using transposed convolutions (ConvTranspose2d + BatchNorm + ReLU) and Discriminator using strided convolutions (Conv2d + BatchNorm + LeakyReLU + Sigmoid)
+- Built a **complete adversarial training pipeline** with alternating Generator/Discriminator updates, loss logging, checkpoint saving every N epochs, and sample grid visualization to track generation quality over time
+- Deployed the trained model as a **Flask REST API** with endpoints for single/batch image generation, model status checks, and a browser-based generation interface
+- Configured **automatic CUDA/CPU detection** — training and inference adapt to available hardware with no code changes
+- Designed for **reproducibility** — fixed latent dimension (z=100), documented hyperparameters (lr=0.0002, batch=64), and checkpoint resume support
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|---|---|
+| Deep Learning | PyTorch, TorchVision |
+| Model | DCGAN (Conv + ConvTranspose) |
+| Backend | Flask, Gunicorn |
+| Visualization | Matplotlib, Pillow |
+| Dataset | MNIST (auto-downloaded via TorchVision) |
+| Hardware | CUDA (auto-detected) / CPU |
+
+---
+
+## Model Architecture
+
+**Generator** — latent vector → image
 ```
-DC GAN/
-├── requirements.txt       # Python dependencies
-├── train.py              # DC GAN training script
-├── app.py                # Flask web application
-├── quick_train.py        # Quick training pipeline script
-├── models/
-│   └── dcgan.py          # DC GAN model architecture
-├── templates/
-│   └── index.html        # Web interface
-├── checkpoints/          # Saved model checkpoints
-├── samples/              # Generated sample images
-├── plots/               # Training loss plots
-└── data/                # MNIST dataset
+z (100-dim) → ConvTranspose2d → BatchNorm → ReLU
+            → ConvTranspose2d → BatchNorm → ReLU
+            → ConvTranspose2d → Tanh → 28×28 grayscale image
 ```
 
-## Features
+**Discriminator** — image → real/fake probability
+```
+28×28 image → Conv2d → LeakyReLU
+            → Conv2d → BatchNorm → LeakyReLU
+            → Conv2d → Sigmoid → P(real)
+```
 
-- **Generator Network**: Creates 28x28 grayscale images from 100-dimensional latent vectors
-- **Discriminator Network**: Classifies images as real or fake
-- **Training Pipeline**: Complete training loop with logging, checkpointing, and visualization
-- **Flask Web App**: Interactive web interface for generating images via API
-- **GPU Support**: Automatically uses CUDA if available
+---
 
-## Installation
-
-All dependencies are already installed. If needed:
+## Setup
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Dependencies
+**Dependencies:** `torch >= 1.9`, `torchvision >= 0.10`, `flask >= 2.0`, `numpy`, `matplotlib`, `pillow`, `gunicorn`
 
-- torch >= 1.9.0
-- torchvision >= 0.10.0
-- flask >= 2.0.0
-- numpy >= 1.21.0
-- matplotlib >= 3.4.0
-- pillow >= 8.0.0
-- gunicorn >= 20.0.0
+---
 
 ## Usage
 
-### 1. Train the Model
-
-Run the training script:
+### Train
 
 ```bash
 python train.py
 ```
 
-Training will:
-- Download MNIST dataset automatically
-- Train for 100 epochs by default
-- Save checkpoints to `checkpoints/`
-- Generate sample images to `samples/`
-- Plot training losses to `plots/`
+| Config | Value |
+|---|---|
+| Epochs | 100 |
+| Batch size | 64 |
+| Learning rate | 0.0002 |
+| Latent dim | 100 |
 
-Configuration in `train.py`:
-- Batch size: 64
-- Learning rate: 0.0002
-- Latent dimension: 100
-- Epochs: 100
+Outputs: `checkpoints/` (model weights) · `samples/` (generated grids) · `plots/` (loss curves)
 
-### 2. Start the Web Application
-
-After training, start the Flask app:
+### Serve
 
 ```bash
 python app.py
+# http://localhost:5000
 ```
 
-The application will be available at `http://localhost:5000`
+---
 
-### 3. API Endpoints
+## API Reference
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Web interface |
-| `/api/generate` | POST | Generate multiple images (body: `{"num_images": N}`) |
-| `/api/generate-single` | POST | Generate single image |
-| `/api/status` | GET | Check model status |
-| `/api/health` | GET | Health check |
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | Browser-based generation UI |
+| `POST` | `/api/generate` | Generate N images — body: `{"num_images": N}` |
+| `POST` | `/api/generate-single` | Generate one image |
+| `GET` | `/api/status` | Model load status |
+| `GET` | `/api/health` | Health check |
 
-Example API call:
 ```bash
-curl -X POST http://localhost:5000/api/generate -H "Content-Type: application/json" -d '{"num_images": 8}'
+curl -X POST http://localhost:5000/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{"num_images": 8}'
 ```
 
-## Model Architecture
+---
 
-### Generator
-- Input: 100-dimensional latent vector
-- Architecture: ConvTranspose2d -> BatchNorm -> ReLU
-- Output: 28x28 grayscale image
+## Project Structure
 
-### Discriminator
-- Input: 28x28 grayscale image
-- Architecture: Conv2d -> BatchNorm -> LeakyReLU -> Sigmoid
-- Output: Real/Fake probability
-
-## Training Tips
-
-- Training typically takes 1-3 hours on CPU
-- GPU training is significantly faster
-- Monitor generator/discriminator loss balance
-- Higher epoch counts (100+) yield better results
-
-## Troubleshooting
-
-1. **Import errors**: Ensure all dependencies are installed
-2. **Out of memory**: Reduce batch size in Config class
-3. **No checkpoint found**: Train the model first before running app.py
-4. **Port already in use**: Change port in app.run()
-
-## License
-
-MIT License
+```
+├── models/
+│   └── dcgan.py          # Generator + Discriminator architecture
+├── train.py              # Adversarial training loop
+├── quick_train.py        # Faster training pipeline
+├── app.py                # Flask API + web interface
+├── templates/
+│   └── index.html        # Generation UI
+├── checkpoints/          # Saved model weights
+├── samples/              # Generated image grids per epoch
+└── plots/                # Generator / Discriminator loss curves
+```
