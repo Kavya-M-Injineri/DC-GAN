@@ -1,4 +1,4 @@
-# DC-GAN MNIST Generator 999999999999999999999999999
+# DC-GAN MNIST Generator 
 
 A complete **Deep Convolutional Generative Adversarial Network** implementation in PyTorch that generates synthetic handwritten digit images, served via a Flask REST API with a web interface for real-time image generation.
 
